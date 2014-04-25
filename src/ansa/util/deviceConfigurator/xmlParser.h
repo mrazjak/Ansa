@@ -76,6 +76,11 @@ class xmlParser {
 
       // configuration for LISP
       static cXMLElement* GetLISPMapServers(cXMLElement *ms, cXMLElement *device);
+
+      // configuration for OSPFv3
+      static cXMLElement *GetOSPFv3Process(cXMLElement *process, cXMLElement *device);
+      static cXMLElement *GetOSPFv3IPv6Interface(cXMLElement *network, cXMLElement *process);
+
 };
 
 #endif /* XMLPARSER_H_ */

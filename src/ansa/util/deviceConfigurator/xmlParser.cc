@@ -583,3 +583,50 @@ cXMLElement* xmlParser::GetLISPMapServers(cXMLElement *ms, cXMLElement *device)
     }
     return ms;
 }
+
+//
+//
+//- configuration for OSPFv3
+//
+//
+cXMLElement *xmlParser::GetOSPFv3Process(cXMLElement *process, cXMLElement *device)
+{
+    // initial call of the method - get first "processId" node "OSPFv3"
+    if (device != NULL)
+    {
+        cXMLElement *routing = device->getFirstChildWithTag("Routing6");
+        if (routing == NULL)
+            return NULL;
+
+        process = routing->getFirstChildWithTag("OSPFv3");
+
+    // repeated call - get another "processId" sibling node
+    }
+    else if (process != NULL)
+    {
+        process = process->getNextSiblingWithTag("OSPFv3");
+    }
+    else
+    {
+        process = NULL;
+    }
+
+    return process;
+}
+
+cXMLElement *xmlParser::GetOSPFv3IPv6Interface(cXMLElement *interface, cXMLElement *process)
+{
+    // initial call of the method - find first "Interface" node in process
+    if (process != NULL){
+
+        interface = process->getFirstChildWithTag("Interface");
+
+    // repeated call - get another "Network" sibling node
+    }else if (interface != NULL){
+        interface = interface->getNextSiblingWithTag("Interface");
+    }else{
+        interface = NULL;
+    }
+
+    return interface;
+}

@@ -61,6 +61,7 @@
 #include "VRRPv2VirtualRouter.h"
 #include "IEigrpModule.h"
 #include "EigrpNetworkTable.h"
+#include "IOSPFv3Module.h"
 
 /* TRILL */
 #include "TRILLAccess.h"
@@ -160,6 +161,19 @@ class DeviceConfigurator : public cSimpleModule {
       /**< Loads K-value and converts it to number */
       int loadEigrpKValue(cXMLElement *node, const char *attrName, const char *attrValue);
 
+      /////////////////////////////
+      // configuration for OSPFv3 //
+      /////////////////////////////
+      /**< Gets interfaces that correspond to the IP address and mask */
+//      OSPFv3LinkIPv6 *isOSPFv3InterfaceIPv6(std::vector<OSPFv3LinkIPv6 *>& links, InterfaceEntry *interface);
+      /**< Loads configuration of OSPFv3 process */
+      void loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module);
+      /**< Loads configuration of interface for OSPFv3 */
+//      void loadOSPFv3InterfaceConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module);
+      /**< Loads Links added to OSPFv3 */
+      void loadOSPFv3IPv6Interfaces(cXMLElement *processElem, IOSPFv3Module *OSPFv3Module);
+
+
    public:
       // global configuration for PIM
       void loadPimGlobalConfig(pimSM *pimSMModule);
@@ -233,6 +247,15 @@ class DeviceConfigurator : public cSimpleModule {
        * @param eigrpModule [in]
        */
       void loadEigrpIPv4Config(IEigrpModule *eigrpModule);
+
+      /////////////////////////////
+      // configuration for OSPFv3 //
+      /////////////////////////////
+      /**
+       * Loads configuration for OSPFv3
+       * @param OSPFv3Module [in]
+       */
+      void loadOSPFv3ConfigIPv6(IOSPFv3Module *OSPFv3Module);
 
 };
 

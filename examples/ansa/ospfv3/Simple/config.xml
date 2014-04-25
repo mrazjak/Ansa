@@ -1,0 +1,49 @@
+<Devices>
+	<Router id="2001:12::1">
+        <Interfaces>
+            <Interface name="eth0">
+                <IPAddress>12.12.12.1</IPAddress>
+                <Mask>255.255.255.0</Mask>
+                <IPv6Address>2001:12::1/64</IPv6Address>
+                <IPv6Address>2002:12::1/64</IPv6Address>
+            </Interface>
+        </Interfaces>
+        <Routing6>
+            <OSPFv3 ProcessID="1">
+                <RouterID>
+                   <IPAddress>12.12.12.1</IPAddress>
+                </RouterID>
+                <Interfaces>
+                    <Interface name="eth0">
+                         <Area>1</Area>
+                    </Interface>
+                </Interfaces>
+            </OSPFv3>   
+        </Routing6>
+    </Router>
+    
+    <Router id="2001:12::2">
+        <Interfaces>
+            <Interface name="eth0">
+                <IPAddress>12.12.12.2</IPAddress>
+                <Mask>255.255.255.0</Mask>
+                <IPv6Address>2001:12::2/64</IPv6Address>
+                <IPv6Address>2002:12::2/64</IPv6Address>
+            </Interface>
+        </Interfaces>    
+
+        <Routing6>
+        	<OSPFv3 ProcessID="1">
+        	    <RouterID>
+        	       <IPAddress>12.12.12.2</IPAddress>
+        	    </RouterID>
+        		<Interfaces>
+        			<Interface name="eth0">
+        			     <Area>1</Area>
+					</Interface>
+        		</Interfaces>
+        	</OSPFv3>    
+        </Routing6>
+    </Router>
+
+</Devices>

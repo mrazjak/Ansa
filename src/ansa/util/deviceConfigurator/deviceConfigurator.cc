@@ -2520,3 +2520,259 @@ void DeviceConfigurator::loadEigrpInterface(cXMLElement *eigrpIface, IEigrpModul
     }
 }
 
+
+//
+//
+//- configuration for OSPFv3
+//
+//
+
+
+void DeviceConfigurator::loadOSPFv3ConfigIPv6(IOSPFv3Module *OSPFv3Module)
+{
+    ASSERT(OSPFv3Module != NULL);
+
+    // get access to device node from XML
+    const char *deviceType = par("deviceType");
+    const char *deviceId = par("deviceId");
+    const char *configFile = par("configFile");
+    cXMLElement *device = xmlParser::GetDevice(deviceType, deviceId, configFile);
+
+    if (device == NULL)
+    {
+       EV << "No configuration found for this device (" << deviceType <<
+               " id=" << deviceId << ")" << endl;
+       return;
+    }
+
+    loadOSPFv3ProcessesConfig(device, OSPFv3Module);
+
+//    loadOSPFv3InterfaceConfig(device, OSPFv3Module);
+}
+
+/** Comands
+http://www.cisco.com/c/en/us/td/docs/ios_xr_sw/iosxr_r3-7/routing/command/reference/rr37osp3.html
+address-family (OSPFv3)
+area (OSPFv3)
+authentication (OSPFv3)
+auto-cost (OSPFv3)
+clear ospfv3 process
+clear ospfv3 redistribution
+clear ospfv3 routes
+clear ospfv3 statistics
+cost (OSPFv3)
+database-filter all out (OSPFv3)
+dead-interval (OSPFv3)
+default-cost (OSPFv3)
+default-information originate (OSPFv3)
+default-metric (OSPFv3)
+demand-circuit (OSPFv3)
+distance ospfv3
+distribute-list prefix-list in
+distribute-list prefix-list out
+encryption
+flood-reduction (OSPFv3)
+graceful-restart (OSPFv3)
+hello-interval (OSPFv3)
+instance
+interface (OSPFv3)
+log adjacency changes (OSPFv3)
+maximum interfaces (OSPFv3)
+maximum paths (OSPFv3)
+maximum redistributed-prefixes (OSPFv3)
+mtu-ignore (OSPFv3)
+neighbor (OSPFv3)
+network (OSPFv3)
+nssa (OSPFv3)
+ospfv3 name-lookup
+packet-size
+passive (OSPFv3)
+priority (OSPFv3)
+range (OSPFv3)
+redistribute (OSPFv3)
+retransmit-interval (OSPFv3)
+router-id (OSPFv3)
+router ospfv3
+show ospfv3
+show ospfv3 border-routers
+show ospfv3 database
+show ospfv3 flood-list
+show ospfv3 interface
+show ospfv3 neighbor
+show ospfv3 request-list
+show ospfv3 retransmission-list
+show ospfv3 routes
+show ospfv3 summary-prefix
+show ospfv3 virtual-links
+show protocols (OSPFv3)
+stub (OSPFv3)
+summary-prefix (OSPFv3)
+timers lsa arrival
+timers pacing flood
+timers pacing lsa-group
+timers pacing retransmission
+timers throttle lsa all (OSPFv3)
+timers throttle spf (OSPFv3)
+trace
+transmit-delay (OSPFv3)
+virtual-link (OSPFv3)
+
+*/
+
+
+void DeviceConfigurator::loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module)
+{
+    // XML nodes for OSPFv3
+    cXMLElement *processElem = NULL;
+    cXMLElement *tempNode = NULL;
+
+    int processId;    // converted AS number
+    const char *processIdStr;   // string with AS number
+    const char *routerIdStr;   // string with AS number
+    bool success;
+
+    processElem = xmlParser::GetOSPFv3Process(processElem, device);
+    if (processElem == NULL)
+    {
+        EV << "No OSPFv3 configuration found." << endl;
+        return;
+    }
+
+    while (processElem != NULL)
+    {
+        // AS number of process
+        if ((processIdStr = processElem->getAttribute("ProcessID")) == NULL)
+        {// AS number is mandatory
+            throw cRuntimeError("No OSPFv3 process ID number specified");
+        }
+        success = xmlParser::Str2Int(&processId, processIdStr);
+        if (!success || processId < 1 || processId > 65535)
+        { // bad value, AS number must be in <1, 65535>
+            throw cRuntimeError("Bad value for process ID number");
+        }
+        OSPFv3Module->setProcessID(processId); //TODO next atributs
+
+
+        //
+        // Loads Links and enables corresponding interfaces
+        loadOSPFv3IPv6Interfaces(processElem, OSPFv3Module);
+
+        if ((tempNode = processElem->getFirstChildWithTag("RouterID")) != NULL)
+        {
+            if ((routerIdStr = xmlParser::GetNodeParamConfig(tempNode, "IPAddress", NULL)) == NULL)
+            {// address is mandatory
+                throw cRuntimeError("No RouterID specified in the OSPFv3");
+            }
+        }else{
+            throw cRuntimeError("No RouterID specified in the OSPFv3");
+        }
+        OSPFv3Module->setRouterID(IPv4Address(routerIdStr));
+
+        processElem = xmlParser::GetOSPFv3Process(processElem, NULL);
+    }
+}
+
+void DeviceConfigurator::loadOSPFv3IPv6Interfaces(cXMLElement *processElem, IOSPFv3Module *OSPFv3Module)
+{
+//    const char *addressStr;
+    const char *interfaceName;
+    const char *areaStr;
+    int area;
+    bool success;
+//    IPv6Address address;
+//    int prefixLen;
+//    std::vector<OSPFv3LinkIPv6 *> links;
+//    OSPFv3LinkIPv6 *lnk;
+    InterfaceEntry *iface;
+
+    cXMLElement *netoworkParentElem = processElem->getFirstChildWithTag("Interfaces");
+    if (netoworkParentElem == NULL)
+        return;
+    cXMLElement *intfElem = xmlParser::GetOSPFv3IPv6Interface(NULL, netoworkParentElem);
+
+    while (intfElem != NULL)
+    {
+
+        if ((interfaceName = intfElem->getAttribute("name")) == NULL)
+        {// AS number is mandatory
+            throw cRuntimeError("No OSPFv3 interface name specified");
+        }
+        // Get Area
+        if ((areaStr = xmlParser::GetNodeParamConfig(intfElem, "Area", NULL)) == NULL)
+        {// address is mandatory
+            throw cRuntimeError("No Area specified in the OSPFv3 Interfaces");
+        }
+        success = xmlParser::Str2Int(&area, areaStr);
+        if (!success || area < 0 || area > 4294967295)
+        { // bad value, AS number must be in <0, 4294967295>
+            throw cRuntimeError("Bad value for Area number");
+        }
+
+        // check if it's a valid IPv6 address string with prefix and get prefix
+/*        if (!address.tryParseAddrWithPrefix(addressStr, prefixLen)){
+           throw cRuntimeError("Unable to set IPv6 address %s to OSPFv3 networks.", addressStr);
+        }
+
+       lnk = OSPFv3Module->addLink(address, prefixLen);
+       links.push_back(lnk);
+*/      iface = NULL;
+        iface = ift->getInterfaceByName(interfaceName);
+        if (iface!=NULL){
+            OSPFv3Module->addInterface(iface->getInterfaceId(), area, true);
+        }
+        intfElem = xmlParser::GetOSPFv3IPv6Interface(intfElem, NULL);
+    }
+
+    // Find and store interfaces for networks
+/*    for(int i = 0; i < ift->getNumInterfaces(); i++)
+    {
+        iface = ift->getInterface(i);
+        if ((lnk = isOSPFv3InterfaceIPv6(links, iface)) != NULL){
+            OSPFv3Module->addInterface(iface->getInterfaceId(), lnk->getLinkId(), true);
+        }
+    }
+*/}
+
+/*OSPFv3LinkIPv6 *DeviceConfigurator::isOSPFv3InterfaceIPv6(std::vector<OSPFv3LinkIPv6 *>& links, InterfaceEntry *interface)
+{
+    IPv6Address prefix;
+    int prefixLen;
+    IPv6Address ifAddress;// = interface->ipv4Data()->getIPAddress();
+//    int ifmask;           // = interface->ipv4Data()->getNetmask();    --- In IPv6 dont exist
+    vector<int> resultIfs;
+//    int maskLength, ifMaskLength;
+    std::vector<OSPFv3LinkIPv6 *>::iterator itLink;
+
+    int count = interface->ipv6Data()->getNumAddresses();
+    for (int i=0;i<count;i++)
+    {
+
+        ifAddress = interface->ipv6Data()->getAddress(i);
+
+        //int ifmask = interface->ipv6Data()->getNetmask();
+        //if (ifAddress.isUnspecified())
+        //            return NULL;
+
+        for (itLink = links.begin(); itLink != links.end(); itLink++)
+        {
+            prefix = (*itLink)->getPrefix();
+            prefixLen = (*itLink)->getPrefixLen();
+
+            // prefix isUnspecified -> network = 0.0.0.0 -> all interfaces, or
+            // mask is unspecified -> classful match or
+            // mask is specified -> classless match
+            /*if (prefix.isUnspecified() ||
+                    (mask.isUnspecified() && prefix.isNetwork(ifAddress) && maskLength <= ifMaskLength) ||
+                    (prefix.maskedAddrAreEqual(prefix, ifAddress, mask) && maskLength <= ifMaskLength))
+            */
+            // if (prefix == (ifAddress && prefixLen))
+/*            if (prefix.compare(ifAddress.constructMask(prefixLen)))
+            {
+                return *itLink;
+            }
+        }
+    }
+
+    return NULL;
+}*/
+
