@@ -13,25 +13,27 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef __INET_OSPFV3TOPOLOGYTABLEIPV6_H_
-#define __INET_OSPFV3TOPOLOGYTABLEIPV6_H_
+#ifndef __INET_OSPFV3AREATABLEIPV6_H_
+#define __INET_OSPFV3AREATABLEIPV6_H_
 
 #include <omnetpp.h>
 
 //#include "EigrpRoute.h"
+#include "OSPFv3Area.h"
+//#include "OSPFv3ProcessIPv6.h"
+//#include "OSPFv3Interface.h"
+//#include "IOSPFv3Module.h"
 
 //namespace OSPFv3 {
 
-/**
- * V tabulce muze byt vice zaznamu do stejneho cile pres ruzne next hopy. Vyhledavat se musi podle
- * souseda (co treba handle?) a adresy a masky cesty (bez masky to asi nepujde).
- */
-class OSPFv3TopologyTableIPv6 : public cSimpleModule
+class OSPFv3Area;
+
+class OSPFv3AreaTableIPv6 : public cSimpleModule
 {
   private:
-//    typedef typename std::vector<EigrpRouteSource<IPv4Address> *> OSPFv3RouteVector;
+    typedef typename std::vector<OSPFv3Area*> OSPFv3AreaVec;
 
-//    OSPFv3RouteVector OSPFv3routes;    /**< Table with routes. */
+    OSPFv3AreaVec OSPFv3Areas;    /**< Table with areas. */
 
 //    int routeIdCounter;         /**< Counter for route ID */
 
@@ -40,9 +42,12 @@ class OSPFv3TopologyTableIPv6 : public cSimpleModule
     virtual void handleMessage(cMessage *msg);
 
   public:
-//    OSPFv3TopologyTableIPv6() { routeIdCounter = 1; }
-    virtual ~OSPFv3TopologyTableIPv6();
+    OSPFv3AreaTableIPv6() { /*routeIdCounter = 1;*/ }
+    virtual ~OSPFv3AreaTableIPv6();
+
+    void addArea(OSPFv3Area* area);
+    OSPFv3Area *getAreaById(const IPv4Address AreaId);
 
 };
 //} // namespace OSPFv3
-#endif // __INET_OSPFV3TOPOLOGYTABLEIPV6_H_
+#endif // __INET_OSPFV3AREATABLEIPV6_H_

@@ -19,6 +19,7 @@ import inet.ansa.networklayer.ospfv3.processIPv6.OSPFv3ProcessIPv6;
 import inet.ansa.networklayer.ospfv3.tablesIPv6.OSPFv3InterfaceTableIPv6;
 import inet.ansa.networklayer.ospfv3.tablesIPv6.OSPFv3NeighborTableIPv6;
 import inet.ansa.networklayer.ospfv3.tablesIPv6.OSPFv3TopologyTableIPv6;
+import inet.ansa.networklayer.ospfv3.tablesIPv6.OSPFv3AreaTableIPv6;
 
 
 module OSPFv3RoutingIPv6
@@ -43,6 +44,9 @@ module OSPFv3RoutingIPv6
         }
         OSPFv3TopologyTableIPv6: OSPFv3TopologyTableIPv6 {
             @display("p=200,105");
+        }
+        OSPFv3AreaTableIPv6: OSPFv3AreaTableIPv6 {
+            @display("p=200,245");
         }
     connections:
         IPv6In --> OSPFv3ProcessIPv6.IPv6In;

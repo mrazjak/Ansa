@@ -2251,7 +2251,7 @@ EigrpNetwork *DeviceConfigurator::isEigrpInterface(std::vector<EigrpNetwork *>& 
     std::vector<EigrpNetwork *>::iterator it;
 
     if (ifAddress.isUnspecified())
-                return false;
+                return NULL;
 
     for (it = networks.begin(); it != networks.end(); it++)
     {
@@ -2528,7 +2528,7 @@ void DeviceConfigurator::loadEigrpInterface(cXMLElement *eigrpIface, IEigrpModul
 //
 
 
-void DeviceConfigurator::loadOSPFv3ConfigIPv6(IOSPFv3Module *OSPFv3Module)
+void DeviceConfigurator::loadOSPFv3ConfigIPv6(/*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module)
 {
     ASSERT(OSPFv3Module != NULL);
 
@@ -2620,7 +2620,7 @@ virtual-link (OSPFv3)
 */
 
 
-void DeviceConfigurator::loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module)
+void DeviceConfigurator::loadOSPFv3ProcessesConfig(cXMLElement *device, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module)
 {
     // XML nodes for OSPFv3
     cXMLElement *processElem = NULL;
@@ -2652,10 +2652,8 @@ void DeviceConfigurator::loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3M
         }
         OSPFv3Module->setProcessID(processId); //TODO next atributs
 
-
-        //
-        // Loads Links and enables corresponding interfaces
-        loadOSPFv3IPv6Interfaces(processElem, OSPFv3Module);
+        // Loads Areas and enables corresponding interfaces
+        loadOSPFv3IPv6Areas(processElem, OSPFv3Module);
 
         if ((tempNode = processElem->getFirstChildWithTag("RouterID")) != NULL)
         {
@@ -2672,107 +2670,106 @@ void DeviceConfigurator::loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3M
     }
 }
 
-void DeviceConfigurator::loadOSPFv3IPv6Interfaces(cXMLElement *processElem, IOSPFv3Module *OSPFv3Module)
+void DeviceConfigurator::loadOSPFv3IPv6Areas(cXMLElement *processElem, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module)
 {
-//    const char *addressStr;
-    const char *interfaceName;
     const char *areaStr;
-    int area;
+    int areaID;
+    IPv4Address areaIP;
     bool success;
-//    IPv6Address address;
-//    int prefixLen;
-//    std::vector<OSPFv3LinkIPv6 *> links;
-//    OSPFv3LinkIPv6 *lnk;
+    OSPFv3Area *area;
+
+    cXMLElement *netoworkParentElem = processElem->getFirstChildWithTag("Areas");
+    if (netoworkParentElem == NULL)
+        return;
+    cXMLElement *areaElem = xmlParser::GetOSPFv3IPv6Area(NULL, netoworkParentElem);
+
+    while (areaElem != NULL)
+    {
+
+        if ((areaStr = areaElem->getAttribute("AreaID")) == NULL)
+        {// AS number is mandatory
+            throw cRuntimeError("No AreaID specified in the OSPFv3");
+        }
+        success = xmlParser::Str2Int(&areaID, areaStr);
+        if (!success || areaID < 0 || areaID > 4294967295)
+        { // bad value, AS number must be in <0, 4294967295>
+            throw cRuntimeError("Bad value for AreaID number");
+        }
+        areaIP= (IPv4Address)areaID;
+        area = new OSPFv3Area(areaIP);
+        OSPFv3Module->addArea(area);
+        area->setProcess(OSPFv3Module);
+// TODO vytvořit area a vložit do tabulky
+
+        // Loads Interfaces
+        loadOSPFv3IPv6Interfaces(areaElem, OSPFv3Module, area);
+
+        areaElem = xmlParser::GetOSPFv3IPv6Area(areaElem, NULL);
+    }
+}
+
+
+void DeviceConfigurator::loadOSPFv3IPv6Interfaces(cXMLElement *processElem, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module, OSPFv3Area *area)
+{
+
+    const char *interfaceName;
+    const char *instanceStr;
+    int instanceID;
+    bool success;
+
     InterfaceEntry *iface;
+    OSPFv3InterfaceIPv6 *OSPFv3iface;
 
     cXMLElement *netoworkParentElem = processElem->getFirstChildWithTag("Interfaces");
     if (netoworkParentElem == NULL)
         return;
+
     cXMLElement *intfElem = xmlParser::GetOSPFv3IPv6Interface(NULL, netoworkParentElem);
 
     while (intfElem != NULL)
     {
-
         if ((interfaceName = intfElem->getAttribute("name")) == NULL)
         {// AS number is mandatory
             throw cRuntimeError("No OSPFv3 interface name specified");
         }
-        // Get Area
-        if ((areaStr = xmlParser::GetNodeParamConfig(intfElem, "Area", NULL)) == NULL)
-        {// address is mandatory
-            throw cRuntimeError("No Area specified in the OSPFv3 Interfaces");
-        }
-        success = xmlParser::Str2Int(&area, areaStr);
-        if (!success || area < 0 || area > 4294967295)
-        { // bad value, AS number must be in <0, 4294967295>
-            throw cRuntimeError("Bad value for Area number");
-        }
-
-        // check if it's a valid IPv6 address string with prefix and get prefix
-/*        if (!address.tryParseAddrWithPrefix(addressStr, prefixLen)){
-           throw cRuntimeError("Unable to set IPv6 address %s to OSPFv3 networks.", addressStr);
-        }
-
-       lnk = OSPFv3Module->addLink(address, prefixLen);
-       links.push_back(lnk);
-*/      iface = NULL;
+        iface = NULL;
         iface = ift->getInterfaceByName(interfaceName);
+
         if (iface!=NULL){
-            OSPFv3Module->addInterface(iface->getInterfaceId(), area, true);
+            OSPFv3iface = new OSPFv3InterfaceIPv6(iface, area, true);
+            //OSPFv3Module->addInterface(iface->getInterfaceId(), AreaID.getInt(), true, ifType);
+
+//            if (interfaceType == "PointToPointInterface") {
+//                OSPFv3iface->setType(OSPFv3InterfaceIPv6::POINTTOPOINT);
+//            } else if (interfaceType == "BroadcastInterface") {
+                OSPFv3iface->setType(OSPFv3InterfaceIPv6::BROADCAST);
+/*            } else if (interfaceType == "NBMAInterface") {
+                OSPFv3iface->setType(OSPFv3InterfaceIPv6::NBMA);
+            } else if (interfaceType == "PointToMultiPointInterface") {
+                OSPFv3iface->setType(OSPFv3InterfaceIPv6::POINTTOMULTIPOINT);
+            } else {
+                delete OSPFv3iface;
+                throw cRuntimeError("OSPFv3: Unknown interface type '%s' for interface %s (ifIndex=%d)",
+                        interfaceType.c_str(), iface->getName(), iface->getInterfaceId());
+            }
+*/
+            // Get InstanceID
+            if ((instanceStr = xmlParser::GetNodeParamConfig(intfElem, "InstanceID", NULL)) != NULL)
+            {
+                success = xmlParser::Str2Int(&instanceID, instanceStr);
+                if (!success || instanceID < 0 || instanceID > 255)
+                { // bad value, InstanceID number must be in <0, 255>
+                    throw cRuntimeError("Bad value for InstanceID number");
+                }
+                OSPFv3iface->setInstanceId(instanceID);
+            }
+            // TODO nastabvení dalších parametrů
+            OSPFv3Module->addInterface(OSPFv3iface);
+            OSPFv3iface=NULL;
         }
         intfElem = xmlParser::GetOSPFv3IPv6Interface(intfElem, NULL);
     }
+}
 
-    // Find and store interfaces for networks
-/*    for(int i = 0; i < ift->getNumInterfaces(); i++)
-    {
-        iface = ift->getInterface(i);
-        if ((lnk = isOSPFv3InterfaceIPv6(links, iface)) != NULL){
-            OSPFv3Module->addInterface(iface->getInterfaceId(), lnk->getLinkId(), true);
-        }
-    }
-*/}
 
-/*OSPFv3LinkIPv6 *DeviceConfigurator::isOSPFv3InterfaceIPv6(std::vector<OSPFv3LinkIPv6 *>& links, InterfaceEntry *interface)
-{
-    IPv6Address prefix;
-    int prefixLen;
-    IPv6Address ifAddress;// = interface->ipv4Data()->getIPAddress();
-//    int ifmask;           // = interface->ipv4Data()->getNetmask();    --- In IPv6 dont exist
-    vector<int> resultIfs;
-//    int maskLength, ifMaskLength;
-    std::vector<OSPFv3LinkIPv6 *>::iterator itLink;
-
-    int count = interface->ipv6Data()->getNumAddresses();
-    for (int i=0;i<count;i++)
-    {
-
-        ifAddress = interface->ipv6Data()->getAddress(i);
-
-        //int ifmask = interface->ipv6Data()->getNetmask();
-        //if (ifAddress.isUnspecified())
-        //            return NULL;
-
-        for (itLink = links.begin(); itLink != links.end(); itLink++)
-        {
-            prefix = (*itLink)->getPrefix();
-            prefixLen = (*itLink)->getPrefixLen();
-
-            // prefix isUnspecified -> network = 0.0.0.0 -> all interfaces, or
-            // mask is unspecified -> classful match or
-            // mask is specified -> classless match
-            /*if (prefix.isUnspecified() ||
-                    (mask.isUnspecified() && prefix.isNetwork(ifAddress) && maskLength <= ifMaskLength) ||
-                    (prefix.maskedAddrAreEqual(prefix, ifAddress, mask) && maskLength <= ifMaskLength))
-            */
-            // if (prefix == (ifAddress && prefixLen))
-/*            if (prefix.compare(ifAddress.constructMask(prefixLen)))
-            {
-                return *itLink;
-            }
-        }
-    }
-
-    return NULL;
-}*/
 

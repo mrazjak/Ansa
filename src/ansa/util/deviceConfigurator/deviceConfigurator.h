@@ -62,6 +62,9 @@
 #include "IEigrpModule.h"
 #include "EigrpNetworkTable.h"
 #include "IOSPFv3Module.h"
+#include "OSPFv3ProcessIPv6.h"
+#include "OSPFv3Interface.h"
+#include "OSPFv3Area.h"
 
 /* TRILL */
 #include "TRILLAccess.h"
@@ -167,11 +170,13 @@ class DeviceConfigurator : public cSimpleModule {
       /**< Gets interfaces that correspond to the IP address and mask */
 //      OSPFv3LinkIPv6 *isOSPFv3InterfaceIPv6(std::vector<OSPFv3LinkIPv6 *>& links, InterfaceEntry *interface);
       /**< Loads configuration of OSPFv3 process */
-      void loadOSPFv3ProcessesConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module);
+      void loadOSPFv3ProcessesConfig(cXMLElement *device, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module);
       /**< Loads configuration of interface for OSPFv3 */
-//      void loadOSPFv3InterfaceConfig(cXMLElement *device, IOSPFv3Module *OSPFv3Module);
-      /**< Loads Links added to OSPFv3 */
-      void loadOSPFv3IPv6Interfaces(cXMLElement *processElem, IOSPFv3Module *OSPFv3Module);
+//      void loadOSPFv3InterfaceConfig(cXMLElement *device, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module);
+      /**< Loads configuration of areas for OSPFv3 */
+      void loadOSPFv3IPv6Areas(cXMLElement *processElem, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module);
+      /**< Loads configuration of interfaces for OSPFv3 */
+      void loadOSPFv3IPv6Interfaces(cXMLElement *processElem, /*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module, OSPFv3Area *area);
 
 
    public:
@@ -255,7 +260,7 @@ class DeviceConfigurator : public cSimpleModule {
        * Loads configuration for OSPFv3
        * @param OSPFv3Module [in]
        */
-      void loadOSPFv3ConfigIPv6(IOSPFv3Module *OSPFv3Module);
+      void loadOSPFv3ConfigIPv6(/*IOSPFv3Module*/OSPFv3ProcessIPv6 *OSPFv3Module);
 
 };
 

@@ -20,27 +20,36 @@
 
 #include "IPv4Address.h"
 #include "IPv6Address.h"
+#include "OSPFv3Neighbor.h"
 
 //#include "OSPFv3NeighborTable.h"
 
+//namespace OSPFv3 {
+
+class OSPFv3Neighbor;
 /**
  * TODO - Generated class
  */
 class OSPFv3NeighborTableIPv6 : public cSimpleModule
 {
   protected:
-//    typedef typename std::vector<EigrpNeighbor<IPv4Address> *> NeighborVector;
+    typedef typename std::vector<OSPFv3Neighbor*> OSPFv3NeighborVector;
 
-//    NeighborVector neighborVec;    /**< Table with neighbors. */
-    int neighborCounter;        /**< For unique ID of neighbor */
+    OSPFv3NeighborVector OSPFv3Neighbors;    /**< Table with neighbors. */
+//    int neighborCounter;        /**< For unique ID of neighbor */
 
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
 
 
   public:
-    OSPFv3NeighborTableIPv6() { neighborCounter = 1; }
+    OSPFv3NeighborTableIPv6() { OSPFv3Neighbors.clear();/*neighborCounter = 1;*/ }
     virtual ~OSPFv3NeighborTableIPv6();
-};
 
+    void addNeighbor(OSPFv3Neighbor *neigh);
+    OSPFv3Neighbor* getNeighborByIntfIdAndNeigId(IPv4Address rId, int intfID) ;
+    OSPFv3Neighbor* getNeighborByIntfIdAndNeigAddress(IPv6Address rAdd, int intfID) ;
+    int getNeighborsByIntfId(int intfID, OSPFv3NeighborVector* neighbors);
+};
+//} // namespace OSPFv3
 #endif // __INET_OSPFV3NEIGHBORTABLEIPV6_H_

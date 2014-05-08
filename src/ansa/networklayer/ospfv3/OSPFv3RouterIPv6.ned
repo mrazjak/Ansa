@@ -137,6 +137,8 @@ module OSPFv3RouterIPv6
             parameters:
                 @display("p=110,574,row,60;q=queue");
         }
+        
+        
         OSPFv3IPv6: OSPFv3RoutingIPv6 {
             @display("p=217,302");
         }

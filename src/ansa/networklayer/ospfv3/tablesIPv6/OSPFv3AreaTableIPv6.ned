@@ -13,18 +13,12 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.ansa.networklayer.ospfv3.processIPv6;
+package inet.ansa.networklayer.ospfv3.tablesIPv6;
 
 //
 // TODO auto-generated module
 //
-simple OSPFv3ProcessIPv6
+simple OSPFv3AreaTableIPv6
 {
-    parameters:
-        
-        @display("i=block/network2");
-        
-    gates:
-        input IPv6In;
-        output IPv6Out;
+    @display("i=block/table"); 
 }

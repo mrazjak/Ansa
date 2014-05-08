@@ -30,20 +30,20 @@ Define_Module(OSPFv3NeighborTableIPv6);
 // Must be there (cancelHoldTimer method)
 OSPFv3NeighborTableIPv6::~OSPFv3NeighborTableIPv6()
 {
-/*    int cnt = neighborVec.size();
-    EigrpNeighbor<IPv4Address> *neigh;
+    int cnt = OSPFv3Neighbors.size();
+    OSPFv3Neighbor*neigh;
 
     for (int i = 0; i < cnt; i++)
     {
-        neigh = neighborVec[i];
+        neigh = OSPFv3Neighbors[i];
 
         //cancelHoldTimer(neigh);
 
-        neighborVec[i] = NULL;
+        OSPFv3Neighbors[i] = NULL;
         delete neigh;
     }
-    neighborVec.clear();
-*/}
+    OSPFv3Neighbors.clear();
+}
 
 void OSPFv3NeighborTableIPv6::initialize()
 {
@@ -54,3 +54,47 @@ void OSPFv3NeighborTableIPv6::handleMessage(cMessage *msg)
 {
     throw cRuntimeError("This module does not process messages");
 }
+void OSPFv3NeighborTableIPv6::addNeighbor(OSPFv3Neighbor *neigh)
+{
+    //TODO check duplicity
+    OSPFv3Neighbors.push_back(neigh);
+}
+OSPFv3Neighbor* OSPFv3NeighborTableIPv6::getNeighborByIntfIdAndNeigId(IPv4Address nId,int intfID) {
+    OSPFv3NeighborVector::iterator it;
+
+    for (it = OSPFv3Neighbors.begin(); it != OSPFv3Neighbors.end(); it++)
+    {
+        if (((*it)->getNeighborID() == nId)&&((*it)->getInterface()->getInterfaceId() == intfID))
+        {
+            return *it;
+        }
+    }
+    return NULL;
+}
+OSPFv3Neighbor* OSPFv3NeighborTableIPv6::getNeighborByIntfIdAndNeigAddress(IPv6Address nAdd,int intfID) {
+    OSPFv3NeighborVector::iterator it;
+
+    for (it = OSPFv3Neighbors.begin(); it != OSPFv3Neighbors.end(); it++)
+    {
+        if (((*it)->getNeighborAddress() == nAdd)&&((*it)->getInterface()->getInterfaceId() == intfID))
+        {
+            return *it;
+        }
+    }
+    return NULL;
+}
+int OSPFv3NeighborTableIPv6::getNeighborsByIntfId(int intfID,OSPFv3NeighborVector* neighbors) {
+    OSPFv3NeighborVector::iterator it;
+    int count = 0;
+
+    for (it = OSPFv3Neighbors.begin(); it != OSPFv3Neighbors.end(); it++)
+    {
+        if ((*it)->getInterface()->getInterfaceId() == intfID)
+        {
+            neighbors->push_back((*it));
+            count++;
+        }
+    }
+    return count;
+}
+

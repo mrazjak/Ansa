@@ -17,10 +17,10 @@
 
 #include <algorithm>
 
-#include "OSPFv3TopologyTableIPv6.h"
+#include "OSPFv3AreaTableIPv6.h"
 //#include "EigrpMessage_m.h"
 
-Define_Module(OSPFv3TopologyTableIPv6);
+Define_Module(OSPFv3AreaTableIPv6);
 
 
 /*std::ostream& operator<<(std::ostream& os, const EigrpRouteSource<IPv4Address>& source)
@@ -45,26 +45,46 @@ Define_Module(OSPFv3TopologyTableIPv6);
     return os;
 }*/
 
-void OSPFv3TopologyTableIPv6::initialize()
+void OSPFv3AreaTableIPv6::initialize()
 {
 //    WATCH_PTRVECTOR(routeVec);
 }
 
-void OSPFv3TopologyTableIPv6::handleMessage(cMessage *msg)
+void OSPFv3AreaTableIPv6::handleMessage(cMessage *msg)
 {
     throw cRuntimeError("This module does not process messages");
 }
 
-OSPFv3TopologyTableIPv6::~OSPFv3TopologyTableIPv6()
+OSPFv3AreaTableIPv6::~OSPFv3AreaTableIPv6()
 {
-//    int cnt = routeVec.size();
-//    EigrpRouteSource<IPv4Address> *rt;
+    int cnt = OSPFv3Areas.size();
+    OSPFv3Area *ar;
 
-//    for (int i = 0; i < cnt; i++)
-//    {
-//        rt = routeVec[i];
-//        routeVec[i] = NULL;
-//        delete rt;
-//    }
-//    routeVec.clear();
+    for (int i = 0; i < cnt; i++)
+    {
+        ar = OSPFv3Areas[i];
+
+        OSPFv3Areas[i] = NULL;
+        delete ar;
+    }
+    OSPFv3Areas.clear();
 }
+void OSPFv3AreaTableIPv6::addArea(OSPFv3Area *area)
+{
+    //TODO check duplicity
+    OSPFv3Areas.push_back(area);
+}
+OSPFv3Area *OSPFv3AreaTableIPv6::getAreaById(const IPv4Address AreaId)
+{
+    OSPFv3AreaTableIPv6::OSPFv3AreaVec::iterator ita;
+
+    for (ita = OSPFv3Areas.begin(); ita != OSPFv3Areas.end(); ita++)
+    {
+        if ((*ita)->getAreaID() == AreaId)
+        {
+            return *ita;
+        }
+    }
+    return NULL;
+}
+

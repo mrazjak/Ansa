@@ -19,66 +19,20 @@
 
 Define_Module(OSPFv3InterfaceTableIPv6);
 
-
-/*std::ostream& operator<<(std::ostream& out, const EigrpInterface& iface)
-{
-
-    out << "ID:" << iface.getInterfaceId();
-    out << " HELLO:" << iface.getHelloInt();
-    out << " HOLD:" << iface.getDeadInt();
-    out << " BW:" << iface.getBandwidth();
-    out << " DLY:" << iface.getDelay();
-    out << " REL:" << iface.getReliability() << "/255";
-    out << " RLOAD:" << iface.getLoad() << "/255";
-    return out;
-}*/
-
-OSPFv3InterfaceIPv6::~OSPFv3InterfaceIPv6()
-{
-//    delete hellot;
-}
-
-OSPFv3InterfaceIPv6::OSPFv3InterfaceIPv6(InterfaceEntry *iface, int area,/*int linkId,*/ bool enabled) :
-       interfaceId(iface->getInterfaceId()), areaId(area),/*linkId(linkId),*/ enabled(enabled)
-{
-    hellot = NULL;
-    instanceId = 1;
-    hopLimit = 1;
-
-/*    bandwidth = iface->getBandwidth();
-    delay = iface->getDelay();
-    reliability = iface->getReliability();
-    load = iface->getTransLoad();
-
-*/    if (!iface->isMulticast())
-    { // Non-broadcast Multi Access interface (no multicast)
-        helloInt = 30;
-        deadInt = 120;
-    }
-    else
-    {
-        helloInt = 10;
-        deadInt = 40;
-    }
-}
-
 OSPFv3InterfaceTableIPv6::~OSPFv3InterfaceTableIPv6()
 {
-/*    int cnt = eigrpInterfaces.size();
-    EigrpInterface *iface;
+    int cnt = OSPFv3Interfaces.size();
+    OSPFv3InterfaceIPv6 *iface;
 
     for (int i = 0; i < cnt; i++)
     {
-        iface = eigrpInterfaces[i];
+        iface = OSPFv3Interfaces[i];
 
-        // Must be there
-        cancelHelloTimer(iface);
-
-        eigrpInterfaces[i] = NULL;
+        OSPFv3Interfaces[i] = NULL;
         delete iface;
     }
-    eigrpInterfaces.clear();
-*/}
+    OSPFv3Interfaces.clear();
+}
 
 void OSPFv3InterfaceTableIPv6::initialize(int stage)
 {
@@ -124,7 +78,7 @@ EigrpInterface *EigrpInterfaceTable::removeInterface(EigrpInterface *iface)
     return NULL;
 }
 */
-OSPFv3InterfaceIPv6 *OSPFv3InterfaceTableIPv6::getInterfaceById(int ifaceId)
+OSPFv3InterfaceIPv6 *OSPFv3InterfaceTableIPv6::getInterfaceById(const int ifaceId)
 {
     OSPFv3InterfaceVector::iterator it;
 
@@ -135,7 +89,6 @@ OSPFv3InterfaceIPv6 *OSPFv3InterfaceTableIPv6::getInterfaceById(int ifaceId)
             return *it;
         }
     }
-
     return NULL;
 }
 

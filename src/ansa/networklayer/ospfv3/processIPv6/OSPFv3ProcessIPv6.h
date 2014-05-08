@@ -23,59 +23,73 @@
 #include "IPv4Address.h"
 #include "IPv6Address.h"
 #include "IPv6ControlInfo.h"
+#include "IPv6InterfaceData.h"
 #include "ANSARoutingTable6.h"
 #include "ANSARoutingTable6Access.h"
 #include "NotificationBoard.h"
 
 #include "IOSPFv3Module.h"
+#include "OSPFv3Interface.h"
+#include "OSPFv3InterfaceState.h"
 #include "OSPFv3InterfaceTableIPv6.h"
 #include "OSPFv3NeighborTableIPv6.h"
 #include "OSPFv3TopologyTableIPv6.h"
-
-//#include "OSPFv3LinkTableIPv6.h"
+//#include "OSPFv3Area.h"
+#include "OSPFv3AreaTableIPv6.h"
 
 #include "OSPFv3Timer_m.h"
 #include "OSPFv3PacketIPv6_m.h"
 
+//#include "IOSPFv3MessageHandler.h"
+#include "OSPFv3MessageHandler.h"
+
+//namespace OSPFv3 {
+
+const IPv4Address NULL_IPV4ADDRESS(0,0,0,0);
+const IPv6Address NULL_IPV6ADDRESS("0::0");
+
+//class IOSPFv3MessageHandler;
+class OSPFv3MessageHandler;
+class OSPFv3Area;
+//class OSPFv3InterfaceIPv6;
+class OSPFv3AreaTableIPv6;
+class OSPFv3InterfaceTableIPv6;
+class OSPFv3NeighborTableIPv6;
+//class InterfaceState;
+
 class OSPFv3ProcessIPv6 : public cSimpleModule, public IOSPFv3Module, public INotifiable
 {
-  protected:
-    typedef std::vector<ANSAIPv4Route *> RouteVector;
-
+  public:
     const char* OSPFV3_OUT_GW;  /**< Output gateway to the OSPFv3 module */
     const IPv6Address OSPFV3_IPV6_MULT;    /**< Multicast address for OSPFv3 messages */
     const IPv6Address OSPFV3_IPV6_MULT_DR; /**< Multicast address for OSPFv3 messages for all DR router*/
-
+  protected:
+//    typedef std::vector<ANSAIPv4Route *> RouteVector;
     int processID;              /**< Autonomous system number */
     IPv4Address routerID;       /**< OSPF Router ID*/
 
 
-    IInterfaceTable *ift;
+    IInterfaceTable   *ift;
     ANSARoutingTable6 *rt6;
     NotificationBoard *nb;
 
     OSPFv3InterfaceTableIPv6 *OSPFv3Ift;               /**< Table with enabled OSPFv3 interfaces */
     OSPFv3NeighborTableIPv6  *OSPFv3Nt;                /**< Table with OSPFv3 neighbors */
     OSPFv3TopologyTableIPv6  *OSPFv3Tt;                /**< Topology table */
+    OSPFv3AreaTableIPv6      *OSPFv3At;                /**< Area table */
 
-//    OSPFv3LinkTableIPv6 *linkTable;                    /**< Links included in OSPFv3 */
+    OSPFv3MessageHandler     *OSPFv3MsgHandl;
 
     virtual void initialize(int stage);
     virtual void handleMessage(cMessage *msg);
     /**< Multi-stage initialization. */
     virtual int numInitStages() const { return 5; }
 
-    OSPFv3Timer *createTimer(char timerKind, void *context);
-
-    void processTimer(cMessage *msg);
-
-    OSPFv3InterfaceIPv6 *addInterfaceToOSPFv3(int ifaceId, int area,/*int linkId,*/ bool enabled);
-    void enableInterface(InterfaceEntry *iface, OSPFv3InterfaceIPv6 *OSPFv3Iface/*, IPv4Address& ifAddress, IPv4Address& ifMask*//*, int linkId*/);
-
-    void sendHelloPacket(int ifaceId);
-    OSPFv3HelloPacket *createHelloPacket(int ifaceId);
-    void addOSPFv3Header(OSPFv3Packet *pkt, char type, IPv4Address routerID, IPv4Address areaID, char instanceID);
-    void addIPv6CtrInfo(OSPFv3Packet *pkt, int ifaceId, const IPv6Address &destAddress, short hopLimit);
+    OSPFv3InterfaceIPv6 *addInterfaceToOSPFv3(OSPFv3InterfaceIPv6 *intf);
+    OSPFv3Area *addArea2(OSPFv3Area *area);
+    OSPFv3Neighbor *addNeighbor2(OSPFv3Neighbor *neig);
+    void enableInterface(InterfaceEntry *iface, OSPFv3InterfaceIPv6 *OSPFv3Iface);
+    void joinMulticastGroups(int interfaceId);
 
   public:
     OSPFv3ProcessIPv6();
@@ -83,18 +97,27 @@ class OSPFv3ProcessIPv6 : public cSimpleModule, public IOSPFv3Module, public INo
 
     virtual void receiveChangeNotification(int category, const cObject *details);
 
+    OSPFv3MessageHandler*          getMessageHandler()  { return OSPFv3MsgHandl; }
+
     // Interface IOSPFv3Module
-    void addInterface(int ifaceId, int area,/*int linkId,*/ bool enabled)
-         { addInterfaceToOSPFv3(ifaceId, area,/*linkId,*/ enabled); }
-//    OSPFv3LinkIPv6 *addLink(IPv6Address address, int mask);
+    void addInterface(OSPFv3InterfaceIPv6 *intf) { addInterfaceToOSPFv3(intf); }
+    void addArea(OSPFv3Area *area) { addArea2(area); }
+    void addNeighbor(OSPFv3Neighbor *neig) { addNeighbor2(neig); }
     void setProcessID(int prcssID) { this->processID = prcssID; }
     void setRouterID(IPv4Address routerID) { this->routerID = routerID; }
 
+    void sendOSPFv3Packet(OSPFv3Packet *pkt){ send(pkt,OSPFV3_OUT_GW); }
+
     int getProcessID() const { return this->processID; }
-    IPv4Address getRouterID() const { return this->routerID; }
-
+    IPv4Address             getRouterID() const { return this->routerID; }
+    OSPFv3Area*             getOSPFv3AreaById (IPv4Address AreaID) const;
+    OSPFv3InterfaceIPv6*    getOSPFv3InterfaceById(int intfID) const;
+    InterfaceEntry*         getInterfaceById(int intfID) const;
+    OSPFv3Neighbor*         getNeighborByIntfIdAndNeigId(IPv4Address neigId,int intfID) const;
+    OSPFv3Neighbor*         getNeighborByIntfIdAndNeigAddress(IPv6Address neigAdd,int intfID) const;
+    int                     getNeighborsByIntfId(int intfID, std::vector<OSPFv3Neighbor*>* neighbors) ;
 };
-
+//} // namespace OSPFv3
 /**
  * @brief Class gives access to the OSPFv3ProcessIPv6.
  */

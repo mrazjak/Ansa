@@ -69,14 +69,14 @@ struct OSPFv3Options
 //
 packet OSPFv3Packet
 {
-    char version = 3;                   //  8 bit
-    char type enum(OSPFv3PacketType) = OSPFV3_HELLO; // 8  bit
-    short packetLenght;                 // 16 bit
+    unsigned char version = 3;                   //  8 bit
+    unsigned char type enum(OSPFv3PacketType) = OSPFV3_HELLO; // 8  bit
+    unsigned short packetLenght;                 // 16 bit
     IPv4Address routerID;               // 32 bit
     IPv4Address areaID;                 // 32 bit
-    short checksum;                     // 16 bit
-    char instanceID;                    //  8 bit
-    char zerro;                         //  8 bit
+    unsigned short checksum;                     // 16 bit
+    unsigned char instanceID;                    //  8 bit
+    unsigned char zerro;                         //  8 bit
 };
 
 //
@@ -85,10 +85,10 @@ packet OSPFv3Packet
 packet OSPFv3HelloPacket extends OSPFv3Packet
 {
     int interfaceID;                    // 32 bit
-    char routerPriority;                //  8 bit
+    unsigned char routerPriority;       //  8 bit
     OSPFv3Options options;              // 24 bit
-    short helloInterval = 10;           // 16 bit
-    short routerDeadInterval = 40;      // 16 bit
+    unsigned short helloInterval = 10;           // 16 bit
+    unsigned short routerDeadInterval = 40;      // 16 bit
     IPv4Address designatedRouter;       // 32 bit
     IPv4Address backupDesignatedRouter; // 32 bit
     IPv4Address neighborID[];           //  ~ bit

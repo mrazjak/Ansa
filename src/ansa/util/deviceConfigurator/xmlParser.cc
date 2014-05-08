@@ -614,6 +614,22 @@ cXMLElement *xmlParser::GetOSPFv3Process(cXMLElement *process, cXMLElement *devi
     return process;
 }
 
+cXMLElement *xmlParser::GetOSPFv3IPv6Area(cXMLElement *interface, cXMLElement *process)
+{
+    // initial call of the method - find first "Interface" node in process
+    if (process != NULL){
+
+        interface = process->getFirstChildWithTag("Area");
+
+    // repeated call - get another "Network" sibling node
+    }else if (interface != NULL){
+        interface = interface->getNextSiblingWithTag("Area");
+    }else{
+        interface = NULL;
+    }
+
+    return interface;
+}
 cXMLElement *xmlParser::GetOSPFv3IPv6Interface(cXMLElement *interface, cXMLElement *process)
 {
     // initial call of the method - find first "Interface" node in process

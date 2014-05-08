@@ -19,12 +19,11 @@
 
 #include "OSPFv3ProcessIPv6.h"
 
-
 #define DEBUG
 
 Define_Module(OSPFv3ProcessIPv6);
 
-namespace osfpfv3
+namespace OSPFv3
 {
 
 // User message codes
@@ -71,16 +70,17 @@ const char *UserMsgs[] =
  */
 
 
-OSPFv3ProcessIPv6::OSPFv3ProcessIPv6() : OSPFV3_IPV6_MULT(IPv6Address("fe02::5")),OSPFV3_IPV6_MULT_DR(IPv6Address("fe02::6"))
+OSPFv3ProcessIPv6::OSPFv3ProcessIPv6() : OSPFV3_IPV6_MULT(IPv6Address("ff02::5")),OSPFV3_IPV6_MULT_DR(IPv6Address("ff02::6"))
 {
+    OSPFv3MsgHandl = new OSPFv3MessageHandler(this);
     OSPFV3_OUT_GW = "IPv6Out";
     routerID = IPv4Address("0.0.0.0");
     processID = 1;
-
 }
 
 OSPFv3ProcessIPv6::~OSPFv3ProcessIPv6()
 {
+    delete OSPFv3MsgHandl;
     //delete this->linkTable;
     //delete this->eigrpIftDisabled;
     //delete this->eigrpDual;
@@ -93,11 +93,12 @@ void OSPFv3ProcessIPv6::initialize(int stage)
     // in stage 3
     if (stage == 3)
     {
-        this->OSPFv3Ift = ModuleAccess<OSPFv3InterfaceTableIPv6>("OSPFv3InterfaceTableIPv6").get();
+    //    this->OSPFv3Ift = ModuleAccess<OSPFv3InterfaceTableIPv6>("OSPFv3InterfaceTableIPv6").get();
         this->OSPFv3Nt  = ModuleAccess<OSPFv3NeighborTableIPv6>("OSPFv3NeighborTableIPv6").get();
         this->OSPFv3Tt  = ModuleAccess<OSPFv3TopologyTableIPv6>("OSPFv3TopologyTableIPv6").get();
+        this->OSPFv3At  = ModuleAccess<OSPFv3AreaTableIPv6>("OSPFv3AreaTableIPv6").get();
+        this->OSPFv3Ift = ModuleAccess<OSPFv3InterfaceTableIPv6>("OSPFv3InterfaceTableIPv6").get();
 
-//        this->rt6 = ModuleAccess<ANSARoutingTable6>("routingTable6").get();
         this->rt6 = ANSARoutingTable6Access().get();
         this->ift = InterfaceTableAccess().get();
         this->nb = NotificationBoardAccess().get();
@@ -121,59 +122,7 @@ void OSPFv3ProcessIPv6::initialize(int stage)
 
 void OSPFv3ProcessIPv6::handleMessage(cMessage *msg)
 {
-    if (msg->isSelfMessage())
-    { // Timer
-        this->processTimer(msg);
-    }
-    else
-    { // OSPFv3 message
-
-        // Get source IP address and interface ID
-        IPv6ControlInfo *ctrlInfo =check_and_cast<IPv6ControlInfo *>(msg->getControlInfo());
-        IPv6Address srcAddr = ctrlInfo->getSrcAddr();
-        int ifaceId = ctrlInfo->getInterfaceId();
-
- //       EV<< endl<< endl<< endl<<"OSPFv3 příchozí paket Hurá!"<< endl<< endl<< endl;
-
-        // Find neighbor if exists
- /*       EigrpNeighbor<IPv4Address> *neigh;
-        if ((neigh = eigrpNt->findNeighbor(srcAddr)) != NULL)
-        { // Reset hold timer
-            resetTimer(neigh->getHoldTimer(), neigh->getHoldInt());
-        }
-
-        if (dynamic_cast<EigrpHello*>(msg))
-        {
-            EV << "Received Hello message from " << srcAddr << endl;
-            processHelloMsg(msg, srcAddr, ifaceId, neigh);
-        }
-        else if (dynamic_cast<EigrpUpdate*>(msg) && neigh != NULL)
-        {
-            EV << "Received Update message from " << srcAddr << endl;
-            processUpdateMsg(msg, srcAddr, ifaceId, neigh);
-        }
-        else if (dynamic_cast<EigrpQuery*>(msg) && neigh != NULL)
-        {
-            EV << "Received Query message from " << srcAddr << endl;
-            processQueryMsg(msg, srcAddr, ifaceId, neigh);
-        }
-        else if (dynamic_cast<EigrpReply*>(msg) && neigh != NULL)
-        {
-            EV << "Received Reply message from " << srcAddr << endl;
-            processReplyMsg(msg, srcAddr, ifaceId, neigh);
-        }
-        else if (neigh != NULL)
-        {
-            EV << "Received message of unknown type, skipped" << endl;
-        }
-        else
-        {
-            EV << "Received message from "<< srcAddr <<" that is not neighbor" << endl;
-        }
-*/
-        delete msg;
-        msg = NULL;
-    }
+    OSPFv3MsgHandl->messageReceived(msg);
 }
 
 void OSPFv3ProcessIPv6::receiveChangeNotification(int category, const cObject *details)
@@ -216,120 +165,29 @@ void OSPFv3ProcessIPv6::receiveChangeNotification(int category, const cObject *d
 */    }
 }
 
-void OSPFv3ProcessIPv6::processTimer(cMessage *msg)
-{
-    OSPFv3Timer *timer = check_and_cast<OSPFv3Timer*>(msg);
-    char timerKind = timer->getTimerKind();
 
-    OSPFv3InterfaceIPv6 *OSPFv3Iface;
-    InterfaceEntry *iface;
-    //IPv4Address ifMask;
-    //OSPFv3NeighborIPv6<IPv6Address> *neigh;
-    cObject *contextBasePtr;
-
-    int ifaceId;
-
-    switch (timerKind)
-    {
-    case OSPFV3_HELLO_TIMER:
-        // get interface that belongs to timer
-        contextBasePtr = (cObject*)timer->getContextPointer();
-        OSPFv3Iface = check_and_cast<OSPFv3InterfaceIPv6 *>(contextBasePtr);
-
-        // schedule Hello timer
-        scheduleAt(simTime() + (OSPFv3Iface->getHelloInt()/* - uniform(0, 0.4)*/), timer);
-
-        // send Hello message
-        sendHelloPacket(OSPFv3Iface->getInterfaceId());
-        break;
-
-/*    case EIGRP_HOLD_TIMER:
-        // get neighbor from context
-        contextBasePtr = (cObject*)timer->getContextPointer();
-        neigh = check_and_cast<EigrpNeighbor<IPv4Address> *>(contextBasePtr);
-        ifaceId = neigh->getIfaceId();
-
-        // remove neighbor
-        EV << "Neighbor " << neigh->getIPAddress() <<" is down, holding time expired" << endl;
-        iface = ift->getInterfaceById(ifaceId);
-        ifMask = iface->ipv4Data()->getNetmask();
-        removeNeighbor(neigh, ifMask);
-        neigh = NULL;
-
-        // Send goodbye and restart Hello timer
-        eigrpIface = eigrpIft->findInterfaceById(ifaceId);
-        resetTimer(eigrpIface->getHelloTimer(), eigrpIface->getHelloInt());
-        sendGoodbyeMsg(ifaceId, eigrpIface->getHoldInt());
-        break;
-*/
-    default:
-        EV << "Timer with unknown kind was skipped" << endl;
-        delete timer;
-        timer = NULL;
-        break;
-    }
+OSPFv3Area *OSPFv3ProcessIPv6::getOSPFv3AreaById (IPv4Address AreaID) const{
+    return (OSPFv3At->getAreaById(AreaID));
 }
-
-void OSPFv3ProcessIPv6::sendHelloPacket(int ifaceId)
-{
-    OSPFv3Packet *pkt = createHelloPacket(ifaceId);
-    if (pkt!=NULL){
-        send(pkt, OSPFV3_OUT_GW);
-        EV << /*eigrp::UserMsgs[eigrp::M_HELLO_SEND] << */" to interface " << ifaceId << endl;
-    }
+OSPFv3InterfaceIPv6* OSPFv3ProcessIPv6::getOSPFv3InterfaceById(int intfID) const{
+    return (OSPFv3Ift->getInterfaceById(intfID));
 }
-
-
-OSPFv3HelloPacket *OSPFv3ProcessIPv6::createHelloPacket(int ifaceId)
-{
-    OSPFv3InterfaceIPv6 *ife= OSPFv3Ift->getInterfaceById(ifaceId);
-    OSPFv3HelloPacket *pkt = new OSPFv3HelloPacket("OSPFv3_Hello");
-    if (ife!=NULL){
-        addOSPFv3Header(pkt, OSPFV3_HELLO, routerID,(IPv4Address)ife->getAreaId(),ife->getInstanceId());
-        addIPv6CtrInfo(pkt, ifaceId, OSPFV3_IPV6_MULT, ife->getHopLimit());
-
-        pkt->setInterfaceID(ifaceId);
-        pkt->setRouterPriority(ife->getRouterPriorityId());
-        pkt->setHelloInterval(ife->getHelloInt());
-        pkt->setRouterDeadInterval(ife->getDeadInt());
-
-        return pkt;
-    }
-    return NULL;
+InterfaceEntry* OSPFv3ProcessIPv6::getInterfaceById(int intfID) const{
+    return ift->getInterfaceById(intfID);
 }
-
-void OSPFv3ProcessIPv6::addOSPFv3Header(OSPFv3Packet *pkt, char type, IPv4Address routerID, IPv4Address areaID, char instanceID)
-{
-    pkt->setType(type);
-    pkt->setRouterID(routerID);
-    pkt->setAreaID(areaID);
-    pkt->setInstanceID(instanceID);
+OSPFv3Neighbor* OSPFv3ProcessIPv6::getNeighborByIntfIdAndNeigId(IPv4Address neigId,int intfID) const{
+    return OSPFv3Nt->getNeighborByIntfIdAndNeigId(neigId,intfID);
 }
-
-
-void OSPFv3ProcessIPv6::addIPv6CtrInfo(OSPFv3Packet *pkt, int ifaceId, const IPv6Address &destAddress, short hopLimit)
-{
-   // create and fill in control info
-   IPv6ControlInfo *controlInfo = new IPv6ControlInfo();
-   controlInfo->setProtocol(89);
-//   controlInfo->setSrcAddr(ift->getInterfaceById(ifaceId)->ipv6Data()->getLinkLocalAddress());
-   controlInfo->setDestAddr(destAddress);
-//   controlInfo->setTrafficClass();
-   controlInfo->setHopLimit(hopLimit);
-   controlInfo->setInterfaceId(ifaceId);
-
-   pkt->setControlInfo(controlInfo);
+OSPFv3Neighbor* OSPFv3ProcessIPv6::getNeighborByIntfIdAndNeigAddress(IPv6Address neigAdd,int intfID) const{
+    return OSPFv3Nt->getNeighborByIntfIdAndNeigAddress(neigAdd,intfID);
 }
-
+int OSPFv3ProcessIPv6::getNeighborsByIntfId(int intfID, std::vector<OSPFv3Neighbor*>* neighbors) {
+    return OSPFv3Nt->getNeighborsByIntfId(intfID,neighbors);
+}
 //
 // interface IOSPFv3Module
 //
 
-/*OSPFv3LinkIPv6 *OSPFv3ProcessIPv6::addLink(IPv6Address address, int mask)
-{
-    // TODO duplicity control
-    return linkTable->addLink(address, mask);
-}*/
 /*
 void OSPFv3ProcessIPv6::setHelloInt(int interval, int ifaceId)
 {
@@ -353,7 +211,6 @@ void OSPFv3ProcessIPv6::setDeadInt(int interval, int ifaceId)
 
 void OSPFv3ProcessIPv6::enableInterface(InterfaceEntry *iface, OSPFv3InterfaceIPv6 *OSPFv3Iface/*, IPv4Address& ifAddress, IPv4Address& ifMask*//*, int linkId*/)
 {
-    OSPFv3Timer* hellot;
     int ifaceId = OSPFv3Iface->getInterfaceId();
 //    EigrpRouteSource<IPv4Address> *src;
 //    EigrpMetricPar metricPar;
@@ -364,56 +221,50 @@ void OSPFv3ProcessIPv6::enableInterface(InterfaceEntry *iface, OSPFv3InterfaceIP
     // Remove interface from EIGRP interface table
 //    eigrpIftDisabled->removeInterface(eigrpIface);
     OSPFv3Ift->addInterface(OSPFv3Iface);
+    joinMulticastGroups(OSPFv3Iface->getInterfaceId());
 
-    // Start Hello timer on interface
-    if ((hellot = OSPFv3Iface->getHelloTimer()) == NULL)
-    {
-        hellot = createTimer(OSPFV3_HELLO_TIMER, OSPFv3Iface);
-        OSPFv3Iface->setHelloTimerPtr(hellot);
-    }
-    scheduleAt(simTime() + uniform(0, OSPFv3Iface->getHelloInt()), hellot);
+    OSPFv3Iface->processEvent(OSPFv3InterfaceIPv6::INTERFACE_UP);
 
-    // Create route
-//    src = eigrpTt->findOrCreateRoute(ifAddress, ifMask, ifaceId, EigrpRouteSource<IPv4Address>::CONNECTED_ID, newSourceResult);
-
-//    metricPar = eigrpMetric->getParam(eigrpIface, iface);
-    // Compute metric
-//    src->setMetricParams(metricPar);
-//    uint32_t metric = eigrpMetric->computeMetric(metricPar, this->kValues);
-//    src->setMetric(metric);
-
-    // Notify DUAL about event
-//    eigrpDual->processEvent(EigrpDual::NEW_NETWORK, src, true);
 }
 
-OSPFv3InterfaceIPv6 *OSPFv3ProcessIPv6::addInterfaceToOSPFv3(int ifaceId, int area,/*int linkId,*/ bool enabled)
+void OSPFv3ProcessIPv6::joinMulticastGroups(int interfaceId)
 {
-    InterfaceEntry *iface = ift->getInterfaceById(ifaceId);
-//    IPv4Address ifAddress, ifMask;
-    // create OSPFv3 interface and hello timer
-    OSPFv3InterfaceIPv6 *OSPFv3Iface = new OSPFv3InterfaceIPv6(iface, area,/*linkId,*/ enabled);
+    InterfaceEntry *ie = ift->getInterfaceById(interfaceId);
+    if (!ie)
+        throw cRuntimeError("Interface id=%d does not exist", interfaceId);
+    IPv6InterfaceData *ipv6Data = ie->ipv6Data();
+    if (!ipv6Data)
+        throw cRuntimeError("Interface %s (id=%d) does not have IPv6 data", ie->getName(), interfaceId);
+    ipv6Data->joinMulticastGroup(OSPFv3ProcessIPv6::OSPFV3_IPV6_MULT);
+    ipv6Data->joinMulticastGroup(OSPFv3ProcessIPv6::OSPFV3_IPV6_MULT_DR);
+}
 
-    if (enabled)
+OSPFv3InterfaceIPv6 *OSPFv3ProcessIPv6::addInterfaceToOSPFv3( OSPFv3InterfaceIPv6 *OSPFv3Iface)
+{
+    InterfaceEntry *iface = ift->getInterfaceById(OSPFv3Iface->getInterfaceId());
+
+    if (true/*OSPFv3Intf->getEnabled*/)
     {
-        // Get address and mask of interface
- //       ifMask = iface->ipv4Data()->getNetmask();
- //       ifAddress = iface->ipv4Data()->getIPAddress().doAnd(ifMask);
-
-        enableInterface(iface, OSPFv3Iface/*, ifAddress, ifMask*//*, linkId*/);
+        enableInterface(iface, OSPFv3Iface);
     }
     else
     {
+//        OSPFv3Ift->addInterface(OSPFv3Iface);
+        //TODO přidat rozhraní do OSPF bez Timeru jako passive
 //        eigrpIftDisabled->addInterface(eigrpIface);
     }
 
     return OSPFv3Iface;
 }
 
-OSPFv3Timer *OSPFv3ProcessIPv6::createTimer(char timerKind, void *context)
+OSPFv3Area *OSPFv3ProcessIPv6::addArea2( OSPFv3Area *OSPFv3area)
 {
-    OSPFv3Timer *timer = new OSPFv3Timer();
-    timer->setTimerKind(timerKind);
-    timer->setContextPointer(context);
-
-    return timer;
+    OSPFv3At->addArea(OSPFv3area);
+    return OSPFv3area;
 }
+OSPFv3Neighbor *OSPFv3ProcessIPv6::addNeighbor2( OSPFv3Neighbor *OSPFv3neig)
+{
+    OSPFv3Nt->addNeighbor(OSPFv3neig);
+    return OSPFv3neig;
+}
+

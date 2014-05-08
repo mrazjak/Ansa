@@ -79,6 +79,7 @@ class xmlParser {
 
       // configuration for OSPFv3
       static cXMLElement *GetOSPFv3Process(cXMLElement *process, cXMLElement *device);
+      static cXMLElement *GetOSPFv3IPv6Area(cXMLElement *network, cXMLElement *process);
       static cXMLElement *GetOSPFv3IPv6Interface(cXMLElement *network, cXMLElement *process);
 
 };

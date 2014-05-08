@@ -6,6 +6,8 @@
                 <Mask>255.255.255.0</Mask>
                 <IPv6Address>2001:12::1/64</IPv6Address>
                 <IPv6Address>2002:12::1/64</IPv6Address>
+                <IPv6Address>FF02::5/128</IPv6Address>
+                <IPv6Address>FF02::6/128</IPv6Address>
             </Interface>
         </Interfaces>
         <Routing6>
@@ -13,11 +15,15 @@
                 <RouterID>
                    <IPAddress>12.12.12.1</IPAddress>
                 </RouterID>
-                <Interfaces>
-                    <Interface name="eth0">
-                         <Area>1</Area>
-                    </Interface>
-                </Interfaces>
+        	    <Areas>
+        	    	<Area AreaID="1">
+		        		<Interfaces>
+		        			<Interface name="eth0">
+		        				<InstanceID>42</InstanceID>
+							</Interface>
+		        		</Interfaces>
+        			</Area>
+        		</Areas>
             </OSPFv3>   
         </Routing6>
     </Router>
@@ -29,6 +35,8 @@
                 <Mask>255.255.255.0</Mask>
                 <IPv6Address>2001:12::2/64</IPv6Address>
                 <IPv6Address>2002:12::2/64</IPv6Address>
+                <IPv6Address>FF02::5/128</IPv6Address>
+                <IPv6Address>FF02::6/128</IPv6Address>                
             </Interface>
         </Interfaces>    
 
@@ -37,11 +45,15 @@
         	    <RouterID>
         	       <IPAddress>12.12.12.2</IPAddress>
         	    </RouterID>
-        		<Interfaces>
-        			<Interface name="eth0">
-        			     <Area>1</Area>
-					</Interface>
-        		</Interfaces>
+        	    <Areas>
+        	    	<Area AreaID="1">
+		        		<Interfaces>
+		        			<Interface name="eth0">
+		        				<InstanceID>42</InstanceID>
+							</Interface>
+		        		</Interfaces>
+        			</Area>
+        		</Areas>
         	</OSPFv3>    
         </Routing6>
     </Router>
